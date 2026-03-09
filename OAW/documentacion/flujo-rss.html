@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Documentación - Flujo RSS de Noticias</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f7f8fb;
+            color: #1f2937;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 24px 16px 40px;
+        }
+
+        h1,
+        h2 {
+            color: #111827;
+            margin-top: 0;
+        }
+
+        h1 {
+            margin-bottom: 8px;
+        }
+
+        h2 {
+            margin-top: 28px;
+            margin-bottom: 8px;
+        }
+
+        .card {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 14px;
+        }
+
+        ul {
+            margin: 8px 0 0;
+            padding-left: 20px;
+        }
+
+        code {
+            background: #eef2ff;
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-size: 0.95em;
+        }
+    </style>
+</head>
+
+<body>
+    <main class="container">
+        <h1>Lector RSS de Noticias</h1>
+        <p>Resumen del flujo de obtención, almacenamiento y visualización centralizada de múltiples fuentes RSS.</p>
+
+        <section class="card">
+            <h2>1&#41; Flujo general</h2>
+            <ul>
+                <li>El usuario gestiona sus fuentes personalizadas añadiendo URLs de RSS directamente desde la interfaz.</li>
+                <li>La aplicación valida la conexión a la base de datos y asegura que las tablas <code>news</code> y <code>feeds</code> estén listas.</li>
+                <li>Al solicitar la sincronización ("Actualizar Todo"), la aplicación recorre todos los feeds almacenados y procesa cada ítem.</li>
+                <li>Las noticias se guardan en MySQL utilizando un <code>INSERT ... ON DUPLICATE KEY UPDATE</code> para mantener los datos actualizados mediante el identificador único <code>guid</code>.</li>
+                <li>La interfaz permite al usuario buscar noticias por título/descripción y ordenarlas dinámicamente por fecha, título o categoría.</li>
+            </ul>
+        </section>
+
+        <section class="card">
+            <h2>2&#41; Actualización de noticias</h2>
+            <ul>
+                <li><strong>Gestión de Fuentes:</strong> Los usuarios pueden registrar múltiples URLs en la tabla <code>feeds</code>.</li>
+                <li><strong>Descarga:</strong> Se utiliza cURL con una configuración de timeout para obtener el contenido, respaldado por <code>file_get_contents</code>.</li>
+                <li><strong>Parseo Dinámico:</strong> Se interpreta el XML, extrayendo los metadatos habituales y capturando la <strong>categoría</strong> de cada noticia.</li>
+                <li><strong>Normalización:</strong> Se limpia el HTML de las descripciones y se normaliza el texto a UTF-8 para garantizar legibilidad.</li>
+                <li><strong>Persistencia:</strong> La estrategia de actualización asegura que, ante cambios en un artículo (ej. edición de título), la noticia en base de datos se mantenga vigente.</li>
+            </ul>
+        </section>
+
+        <section class="card">
+            <h2>3&#41; Arquitectura de la aplicación</h2>
+            <ul>
+                <li><strong>Capa de presentación:</strong> Interfaz con formularios para añadir feeds, buscador por texto y selectores de ordenamiento (Fecha, Categoría, Título).</li>
+                <li><strong>Capa de aplicación:</strong> Lógica centralizada para orquestar la sincronización de múltiples fuentes y consultas optimizadas a base de datos.</li>
+                <li><strong>Capa de datos:</strong> Base de datos MySQL con tablas relacionales separadas para <code>feeds</code> y <code>news</code>.</li>
+                <li><strong>Seguridad:</strong> Uso estricto de <em>prepared statements</em> en todas las consultas para prevenir inyecciones SQL.</li>
+            </ul>
+        </section>
+
+        <section class="card">
+            <h2>4&#41; Componentes principales</h2>
+            <ul>
+                <li><code>database/create.sql</code>: Esquema de tablas con soporte para categorías y gestión de feeds.</li>
+                <li><code>rss_sync.php</code>: Lógica robusta de descarga y parseo de múltiples orígenes.</li>
+                <li><code>news_repository.php</code>: Operaciones CRUD, incluyendo la nueva lógica de búsqueda y ordenamiento dinámico.</li>
+                <li><code>news-list.php</code>: Vista principal que orquestra la UI, el registro de nuevos feeds y el filtrado en tiempo real.</li>
+            </ul>
+        </section>
+    </main>
+</body>
+</html>  
