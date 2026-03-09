@@ -34,7 +34,7 @@ function renderNewsCardsHtml(array $newsItems): string
     $html = '';
 
     foreach ($newsItems as $news) {
-        $imageUrl = !empty($news['image_url']) ? (string) $news['image_url'] : 'https://upload.wikimedia.org/wikipedia/commons/5/59/Empty.png';
+        $imageUrl = !empty($news['image_url']) ? (string) $news['image_url'] : 'https://static.vecteezy.com/system/resources/previews/022/059/000/non_2x/no-image-available-icon-vector.jpg';
         $publishedAt = formatDateSpanish((string) ($news['published_at'] ?? ''));
         $description = trim((string) ($news['description'] ?? ''));
 
