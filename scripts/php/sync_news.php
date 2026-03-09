@@ -16,7 +16,7 @@ if (!$dbConnected) {
     exit;
 }
 
-$rssUrl = 'https://www.xataka.com.mx/feedburner.xml';
+$defaultRssUrl = 'https://www.xataka.com.mx/feedburner.xml';
 
 if (!createNewsTableIfNotExists($connection)) {
     error_log('No se pudo ejecutar create.sql en sync_news.php');
@@ -29,12 +29,13 @@ if (!createNewsTableIfNotExists($connection)) {
 }
 
 try {
-    $resFeeds = $connection->query("SELECT url FROM feeds");
+    ensureDefaultFeed($connection, $defaultRssUrl);
+    $feeds = getAllFeeds($connection);
     $totalInserted = 0;
     $totalUpdated = 0;
 
-    while ($f = $resFeeds->fetch_assoc()) {
-        $result = syncNewsFromRss($connection, $f['url']);
+    foreach ($feeds as $feed) {
+        $result = syncNewsFromRss($connection, (string) $feed['url']);
         $totalInserted += $result['inserted'];
         $totalUpdated += $result['updated'];
     }

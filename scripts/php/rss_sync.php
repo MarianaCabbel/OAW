@@ -1,5 +1,155 @@
 <?php
 
+function normalizeText(string $text): string
+{
+    $decoded = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $normalized = preg_replace('/\s+/u', ' ', trim($decoded));
+    return $normalized ?? trim($decoded);
+}
+
+function getSourceFromLink(string $link): string
+{
+    $host = (string) parse_url($link, PHP_URL_HOST);
+
+    if ($host === '') {
+        return 'rss';
+    }
+
+    $host = preg_replace('/^www\./i', '', strtolower($host));
+    return $host !== '' ? $host : 'rss';
+}
+
+function getFirstCategory(SimpleXMLElement $item): string
+{
+    $fallback = 'General';
+
+    if (!isset($item->category)) {
+        return $fallback;
+    }
+
+    foreach ($item->category as $categoryNode) {
+        $value = normalizeText((string) $categoryNode);
+        if ($value !== '') {
+            return $value;
+        }
+    }
+
+    return $fallback;
+}
+
+function getCreator(SimpleXMLElement $item, array $namespaces): string
+{
+    if (isset($namespaces['dc'])) {
+        $dcFields = $item->children($namespaces['dc']);
+        $creator = normalizeText((string) ($dcFields->creator ?? ''));
+        if ($creator !== '') {
+            return $creator;
+        }
+    }
+
+    $author = normalizeText((string) ($item->author ?? ''));
+    return $author;
+}
+
+function getMediaImage(SimpleXMLElement $item, array $namespaces): string
+{
+    if (!isset($namespaces['media'])) {
+        return '';
+    }
+
+    $mediaFields = $item->children($namespaces['media']);
+
+    if (isset($mediaFields->content)) {
+        foreach ($mediaFields->content as $contentNode) {
+            $attributes = $contentNode->attributes();
+            $url = trim((string) ($attributes['url'] ?? ''));
+            $type = strtolower(trim((string) ($attributes['type'] ?? '')));
+
+            if (isSupportedImageUrl($url, $type)) {
+                return $url;
+            }
+        }
+    }
+
+    if (isset($mediaFields->thumbnail)) {
+        foreach ($mediaFields->thumbnail as $thumbNode) {
+            $attributes = $thumbNode->attributes();
+            $url = trim((string) ($attributes['url'] ?? ''));
+
+            if (isSupportedImageUrl($url)) {
+                return $url;
+            }
+        }
+    }
+
+    return '';
+}
+
+function isSupportedImageUrl(string $url, string $mimeType = ''): bool
+{
+    $url = trim($url);
+
+    if ($url === '') {
+        return false;
+    }
+
+    $mimeType = strtolower(trim($mimeType));
+
+    if ($mimeType !== '') {
+        if (strpos($mimeType, 'image/') === 0) {
+            return true;
+        }
+
+        if (strpos($mimeType, 'video/') === 0 || strpos($mimeType, 'audio/') === 0) {
+            return false;
+        }
+    }
+
+    $path = (string) parse_url($url, PHP_URL_PATH);
+    $extension = strtolower((string) pathinfo($path, PATHINFO_EXTENSION));
+
+    $imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'avif', 'jfif', 'tif', 'tiff'];
+    $nonImageExtensions = ['mp4', 'webm', 'mov', 'm4v', 'mkv', 'avi', 'mp3', 'wav', 'ogg'];
+
+    if ($extension === '') {
+        return true;
+    }
+
+    if (in_array($extension, $nonImageExtensions, true)) {
+        return false;
+    }
+
+    return in_array($extension, $imageExtensions, true);
+}
+
+function getDescriptionCandidates(SimpleXMLElement $item, array $namespaces): array
+{
+    $candidates = [];
+
+    $description = trim((string) ($item->description ?? ''));
+    if ($description !== '') {
+        $candidates[] = $description;
+    }
+
+    if (isset($namespaces['content'])) {
+        $contentFields = $item->children($namespaces['content']);
+        $encoded = trim((string) ($contentFields->encoded ?? ''));
+        if ($encoded !== '') {
+            $candidates[] = $encoded;
+        }
+    }
+
+    if (isset($namespaces['dcterms'])) {
+        $dctermsFields = $item->children($namespaces['dcterms']);
+        $alternative = trim((string) ($dctermsFields->alternative ?? ''));
+        if ($alternative !== '') {
+            $candidates[] = $alternative;
+        }
+    }
+
+    return $candidates;
+}
+
 function fetchRssContent(string $url): string
 {
     if (function_exists('curl_init')) {
@@ -60,7 +210,7 @@ function parseRssDateToMysql(?string $dateString): ?string
 function extractImageAndText(string $html): array
 {
     $imageUrl = '';
-    $plainText = html_entity_decode(trim(strip_tags($html)), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $plainText = normalizeText(trim(strip_tags($html)));
 
     if ($html === '') {
         return [$imageUrl, $plainText];
@@ -81,8 +231,7 @@ function extractImageAndText(string $html): array
         $textContent = trim((string) $document->textContent);
 
         if ($textContent !== '') {
-            $normalizedText = html_entity_decode($textContent, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-            $plainText = preg_replace('/\s+/u', ' ', $normalizedText);
+            $plainText = normalizeText($textContent);
         }
     }
 
@@ -127,22 +276,37 @@ function syncNewsFromRss(mysqli $connection, string $rssUrl): array
 
     foreach ($items as $item) {
         $namespaces = $item->getNamespaces(true);
-        $dcCreator = '';
-
-        if (isset($namespaces['dc'])) {
-            $dcFields = $item->children($namespaces['dc']);
-            $dcCreator = trim((string) ($dcFields->creator ?? ''));
-        }
-
-        $title = trim((string) ($item->title ?? ''));
+        $title = normalizeText((string) ($item->title ?? ''));
         $link = trim((string) ($item->link ?? ''));
         $guid = md5($link);
-        $rawDescription = trim((string) ($item->description ?? ''));
-        $category = trim((string) ($item->category ?? 'General')); 
+        $category = getFirstCategory($item);
+        $dcCreator = getCreator($item, $namespaces);
+        $source = getSourceFromLink($link);
 
-        [$imageUrl, $plainDescription] = extractImageAndText($rawDescription);
+        $imageUrl = getMediaImage($item, $namespaces);
+        $plainDescription = '';
+
+        foreach (getDescriptionCandidates($item, $namespaces) as $candidateHtml) {
+            [$candidateImage, $candidateText] = extractImageAndText($candidateHtml);
+
+            if ($imageUrl === '' && isSupportedImageUrl($candidateImage)) {
+                $imageUrl = $candidateImage;
+            }
+
+            if ($plainDescription === '' && $candidateText !== '') {
+                $plainDescription = $candidateText;
+            }
+
+            if ($imageUrl !== '' && $plainDescription !== '') {
+                break;
+            }
+        }
+
+        if ($plainDescription === '') {
+            $plainDescription = 'Sin descripción disponible.';
+        }
+
         $publishedAt = parseRssDateToMysql((string) ($item->pubDate ?? ''));
-        $source = 'xataka';
 
         if ($guid === '' || $title === '' || $link === '') {
             continue;
