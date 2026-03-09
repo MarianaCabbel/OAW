@@ -135,7 +135,7 @@ function syncNewsFromRss(mysqli $connection, string $rssUrl): array
 
         $title = trim((string) ($item->title ?? ''));
         $link = trim((string) ($item->link ?? ''));
-        $guid = trim((string) ($item->guid ?? $link));
+        $guid = md5($link);
         $rawDescription = trim((string) ($item->description ?? ''));
         [$imageUrl, $plainDescription] = extractImageAndText($rawDescription);
         $publishedAt = parseRssDateToMysql((string) ($item->pubDate ?? ''));

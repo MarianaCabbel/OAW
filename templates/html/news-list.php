@@ -1,5 +1,4 @@
 <?php
-$today = date('d/m/Y');
 $rssUrl = 'https://www.xataka.com.mx/feedburner.xml';
 $searchQuery = trim($_GET['q'] ?? '');
 $syncNow = isset($_GET['sync']) && $_GET['sync'] === '1';
@@ -8,6 +7,7 @@ $newsItems = [];
 
 require_once __DIR__ . '/../../scripts/php/news_repository.php';
 require_once __DIR__ . '/../../scripts/php/rss_sync.php';
+require_once __DIR__ . '/../../scripts/php/utils.php';
 
 if (isset($dbConnected) && $dbConnected && isset($connection) && $connection instanceof mysqli) {
     if (!createNewsTableIfNotExists($connection)) {
@@ -29,23 +29,7 @@ if (isset($dbConnected) && $dbConnected && isset($connection) && $connection ins
     $newsItems = searchNews($connection, $searchQuery, 50);
 }
 
-function escapeHtml(string $value): string
-{
-    return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
-}
-
-function shortenText(string $text, int $maxLength = 300): string
-{
-    if (function_exists('mb_strimwidth')) {
-        return mb_strimwidth($text, 0, $maxLength, '...');
-    }
-
-    if (strlen($text) <= $maxLength) {
-        return $text;
-    }
-
-    return substr($text, 0, $maxLength - 3) . '...';
-}
+$today = formatDateSpanish(date('Y-m-d'));
 ?>
 <!doctype html>
 <html lang="es">
@@ -63,11 +47,12 @@ function shortenText(string $text, int $maxLength = 300): string
             <span>Fecha de hoy: <?php echo $today; ?></span>
         </div>
 
-        <h1>Noticias</h1>
+        <h1><i>Noticias de Xataka M&eacute;xico</i></h1>
 
         <div class="search-box">
-            <form method="GET" action="">
+            <form method="GET" action="" class="search-form">
                 <input
+                    class="search-input"
                     type="text"
                     name="q"
                     value="<?php echo escapeHtml($searchQuery); ?>"
@@ -75,7 +60,7 @@ function shortenText(string $text, int $maxLength = 300): string
                     aria-label="Buscar por título de noticia" />
                 <div class="search-actions">
                     <button type="submit">Buscar</button>
-                    <a href="?sync=1">Sincronizar RSS</a>
+                    <a href="?sync=1">Refrescar</a>
                 </div>
             </form>
         </div>
@@ -97,8 +82,8 @@ function shortenText(string $text, int $maxLength = 300): string
             <?php else: ?>
                 <?php foreach ($newsItems as $news): ?>
                     <?php
-                    $imageUrl = !empty($news['image_url']) ? $news['image_url'] : 'https://picsum.photos/300/300';
-                    $publishedAt = !empty($news['published_at']) ? date('d/m/Y', strtotime((string) $news['published_at'])) : 'Sin fecha';
+                    $imageUrl = !empty($news['image_url']) ? $news['image_url'] : 'https://upload.wikimedia.org/wikipedia/commons/5/59/Empty.png';
+                    $publishedAt = formatDateSpanish((string) ($news['published_at'] ?? ''));
                     $description = trim((string) ($news['description'] ?? ''));
                     if ($description === '') {
                         $description = 'Sin descripción disponible.';
