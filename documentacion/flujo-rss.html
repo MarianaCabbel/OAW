@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Documentación - Flujo RSS de Noticias</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #f7f8fb;
+            color: #1f2937;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 920px;
+            margin: 0 auto;
+            padding: 24px 16px 40px;
+        }
+
+        h1,
+        h2 {
+            color: #111827;
+            margin-top: 0;
+        }
+
+        h1 {
+            margin-bottom: 8px;
+        }
+
+        h2 {
+            margin-top: 28px;
+            margin-bottom: 8px;
+        }
+
+        .card {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 14px;
+        }
+
+        ul {
+            margin: 8px 0 0;
+            padding-left: 20px;
+        }
+
+        code {
+            background: #eef2ff;
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-size: 0.95em;
+        }
+    </style>
+</head>
+
+<body>
+    <main class="container">
+        <h1>Lector RSS de Noticias</h1>
+        <p>Resumen del flujo de obtención, almacenamiento y visualización de noticias desde la fuente RSS de Xataka
+            México.</p>
+
+        <section class="card">
+            <h2>1) Flujo general</h2>
+            <ul>
+                <li>El usuario entra a la página principal de noticias y se carga la vista de listado.</li>
+                <li>La aplicación valida conexión a base de datos y asegura la estructura mínima de tablas usando el
+                    archivo <code>create.sql</code>.</li>
+                <li>Si no hay noticias o si se solicita sincronización manual, se descarga el RSS y se procesa cada
+                    item.</li>
+                <li>Las noticias se guardan en MySQL con estrategia de actualización por <code>guid</code> (insertar
+                    nuevas / actualizar existentes).</li>
+                <li>Finalmente se consultan los registros en base de datos y se renderizan en la UI con filtro por
+                    título.</li>
+            </ul>
+        </section>
+
+        <section class="card">
+            <h2>2) ¿Cómo funciona la actualización de noticias?</h2>
+            <ul>
+                <li><strong>Fuente RSS:</strong> se consume <code>https://www.xataka.com.mx/feedburner.xml</code>.</li>
+                <li><strong>Descarga:</strong> primero se intenta por cURL; si no está disponible, se usa
+                    <code>file_get_contents</code>.</li>
+                <li><strong>Parseo:</strong> se interpreta XML, se extraen título, enlace, guid, fecha, autor, imagen y
+                    descripción.</li>
+                <li><strong>Normalización:</strong> se limpia HTML de la descripción y se corrige codificación UTF-8
+                    para evitar texto corrupto.</li>
+                <li><strong>Persistencia:</strong> se ejecuta un <code>INSERT ... ON DUPLICATE KEY UPDATE</code> para
+                    mantener noticias al día.</li>
+                <li><strong>Ejecución:</strong> la sincronización ocurre por primera carga (si no hay datos) o por
+                    acción manual en la UI (botón Sincronizar RSS).</li>
+            </ul>
+        </section>
+
+        <section class="card">
+            <h2>3) Arquitectura de la app (alto nivel)</h2>
+            <ul>
+                <li><strong>Capa de presentación:</strong> plantilla HTML/CSS del listado de noticias y buscador.</li>
+                <li><strong>Capa de aplicación:</strong> scripts PHP para sincronizar RSS, consultar noticias y
+                    orquestar el flujo.</li>
+                <li><strong>Capa de datos:</strong> conexión MySQL y esquema SQL inicial.</li>
+                <li><strong>Punto de sincronización:</strong> endpoint dedicado para ejecutar actualización bajo
+                    demanda.</li>
+                <li><strong>Manejo de errores:</strong> errores y excepciones relevantes se registran en el log de PHP.
+                </li>
+            </ul>
+        </section>
+
+        <section class="card">
+            <h2>4) Componentes principales</h2>
+            <ul>
+                <li><code>database/create.sql</code>: define estructura inicial de base de datos.</li>
+                <li><code>database/connection.php</code>: conexión MySQL con charset utf8mb4.</li>
+                <li><code>scripts/php/rss_sync.php</code>: lógica de descarga y parseo RSS.</li>
+                <li><code>scripts/php/news_repository.php</code>: operaciones de tabla y consultas de noticias.</li>
+                <li><code>scripts/php/sync_news.php</code>: endpoint para sincronización manual.</li>
+                <li><code>templates/html/news-list.php</code>: render del listado y búsqueda.</li>
+            </ul>
+        </section>
+    </main>
+</body>
+
+</html>
