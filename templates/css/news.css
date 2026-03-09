@@ -13,6 +13,22 @@ body {
     color: #1f2937;
 }
 
+.preload-news #newsSkeleton {
+    display: flex;
+}
+
+.preload-news #newsList {
+    display: none;
+}
+
+body:not(.preload-news) #newsSkeleton {
+    display: none;
+}
+
+body:not(.preload-news) #newsList {
+    display: flex;
+}
+
 .page {
     max-width: 980px;
     margin: 0 auto;
@@ -130,6 +146,58 @@ h1 {
     display: flex;
     flex-direction: column;
     gap: 16px;
+}
+
+.news-skeleton {
+    margin-bottom: 16px;
+}
+
+.skeleton-card {
+    grid-template-columns: 180px 1fr;
+}
+
+.skeleton-block {
+    background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 37%, #e5e7eb 63%);
+    background-size: 400% 100%;
+    animation: skeleton-loading 1.2s ease-in-out infinite;
+    border-radius: 8px;
+}
+
+.skeleton-block.image {
+    min-height: 180px;
+    border-radius: 0;
+}
+
+.skeleton-card .news-content {
+    padding: 14px 14px 14px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.skeleton-block.title {
+    width: 72%;
+    height: 28px;
+}
+
+.skeleton-block.meta {
+    width: 42%;
+    height: 16px;
+}
+
+.skeleton-block.text {
+    width: 95%;
+    height: 60px;
+}
+
+@keyframes skeleton-loading {
+    0% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0 50%;
+    }
 }
 
 .news-card {

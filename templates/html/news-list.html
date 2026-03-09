@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Noticias</title>
+    <link rel="stylesheet" href="templates/css/news.css" />
+</head>
+
+<body class="preload-news">
+    <main class="page">
+        <div class="topbar">
+            <span>Fecha de hoy: {{TODAY}}</span>
+            <button type="button" class="settings-toggle" id="openSettings"
+                aria-label="Abrir ajustes de fuentes RSS">&#9881;</button>
+        </div>
+
+        <h1><i>Noticias Recientes</i></h1>
+
+        <div class="search-box">
+            <form method="GET" action="" class="search-form main-search-form">
+                <input class="search-input" type="text" name="q" value="{{SEARCH_QUERY}}"
+                    placeholder="Buscar por titulo de noticia" aria-label="Buscar por titulo de noticia" />
+                <input type="hidden" name="sort" value="{{SORT_BY}}" />
+                <input type="hidden" name="source" value="{{SOURCE_FILTER}}" />
+                <input type="hidden" name="category" value="{{CATEGORY_FILTER}}" />
+                <div class="search-actions">
+                    <button type="submit">Buscar</button>
+                    <button type="button" id="openFilters">Filtros avanzados</button>
+                    <a href="{{REFRESH_URL}}">Refrescar</a>
+                </div>
+            </form>
+        </div>
+
+        {{STATUS_HTML}}
+
+        <section class="news-list news-skeleton" id="newsSkeleton" aria-hidden="true">
+            <article class="news-card skeleton-card">
+                <div class="skeleton-block image"></div>
+                <div class="news-content">
+                    <div class="skeleton-block title"></div>
+                    <div class="skeleton-block meta"></div>
+                    <div class="skeleton-block text"></div>
+                </div>
+            </article>
+            <article class="news-card skeleton-card">
+                <div class="skeleton-block image"></div>
+                <div class="news-content">
+                    <div class="skeleton-block title"></div>
+                    <div class="skeleton-block meta"></div>
+                    <div class="skeleton-block text"></div>
+                </div>
+            </article>
+            <article class="news-card skeleton-card">
+                <div class="skeleton-block image"></div>
+                <div class="news-content">
+                    <div class="skeleton-block title"></div>
+                    <div class="skeleton-block meta"></div>
+                    <div class="skeleton-block text"></div>
+                </div>
+            </article>
+        </section>
+
+        <section class="news-list" id="newsList">
+            {{NEWS_CARDS_HTML}}
+        </section>
+
+        <div class="modal-backdrop {{FILTERS_MODAL_CLASS}}" id="filtersModal">
+            <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="filtersTitle">
+                <div class="modal-header">
+                    <h2 id="filtersTitle">Filtros avanzados</h2>
+                    <button type="button" class="modal-close" id="closeFilters" aria-label="Cerrar filtros">X</button>
+                </div>
+
+                <form method="GET" class="modal-form">
+                    <input type="hidden" name="q" value="{{SEARCH_QUERY}}" />
+
+                    <label for="sourceFilterSelect">Fuente</label>
+                    <select id="sourceFilterSelect" name="source" class="sort-select">
+                        {{FILTER_SOURCE_OPTIONS}}
+                    </select>
+
+                    <label for="sortBySelect">Orden</label>
+                    <select id="sortBySelect" name="sort" class="sort-select">
+                        <option value="published_at" {{SORT_DATE_SELECTED}}>Fecha</option>
+                        <option value="title" {{SORT_TITLE_SELECTED}}>Titulo</option>
+                        <option value="category" {{SORT_CATEGORY_SELECTED}}>Categoria</option>
+                    </select>
+
+                    <label for="categorySelect">Categoria</label>
+                    <select id="categorySelect" name="category" class="sort-select">
+                        {{FILTER_CATEGORY_OPTIONS}}
+                    </select>
+
+                    <button type="submit">Aplicar filtros</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="modal-backdrop {{SETTINGS_MODAL_CLASS}}" id="settingsModal">
+            <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="feedsTitle">
+                <div class="modal-header">
+                    <h2 id="feedsTitle">Fuentes RSS</h2>
+                    <button type="button" class="modal-close" id="closeSettings" aria-label="Cerrar ajustes">X</button>
+                </div>
+
+                {{PANEL_MESSAGE_HTML}}
+
+                <form method="POST" class="modal-form">
+                    <input type="hidden" name="feed_action" value="add" />
+                    <input type="url" name="new_feed_url" placeholder="https://sitio.com/feed.xml" required />
+                    <button type="submit">Agregar fuente</button>
+                </form>
+
+                <div class="feed-list">
+                    {{FEED_ITEMS_HTML}}
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="scripts/js/news-list.js"></script>
+</body>
+
+</html>
