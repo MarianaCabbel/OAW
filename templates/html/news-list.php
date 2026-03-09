@@ -1,8 +1,8 @@
 <?php
 $today = date('d/m/Y');
-$rssUrl = 'https://www.xataka.com.mx/feedburner.xml';
 $searchQuery = trim($_GET['q'] ?? '');
 $syncNow = isset($_GET['sync']) && $_GET['sync'] === '1';
+$sortBy = $_GET['sort'] ?? 'published_at'; 
 $syncMessage = '';
 $newsItems = [];
 
@@ -14,19 +14,35 @@ if (isset($dbConnected) && $dbConnected && isset($connection) && $connection ins
         error_log('No se pudo ejecutar create.sql para inicializar tabla news.');
     }
 
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['new_feed'])) {
+        $newUrl = filter_var($_POST['new_feed'], FILTER_VALIDATE_URL);
+        if ($newUrl) {
+            $stmt = $connection->prepare("INSERT IGNORE INTO feeds (url) VALUES (?)");
+            $stmt->bind_param('s', $newUrl);
+            $stmt->execute();
+        }
+    }
+
     $currentCount = getNewsCount($connection);
 
     if ($syncNow || $currentCount === 0) {
         try {
-            $syncResult = syncNewsFromRss($connection, $rssUrl);
-            $syncMessage = 'Sincronización completada. Nuevas: ' . $syncResult['inserted'] . ' | Actualizadas: ' . $syncResult['updated'];
+            $resFeeds = $connection->query("SELECT url FROM feeds");
+            $totalInserted = 0;
+            $totalUpdated = 0;
+            
+            while ($f = $resFeeds->fetch_assoc()) {
+                $res = syncNewsFromRss($connection, $f['url']);
+                $totalInserted += $res['inserted'];
+                $totalUpdated += $res['updated'];
+            }
+            $syncMessage = "Sincronización completa. Nuevas: $totalInserted | Actualizadas: $totalUpdated";
         } catch (Throwable $exception) {
-            error_log('Error de sincronización RSS en UI: ' . $exception->getMessage());
-            $syncMessage = 'No se pudo sincronizar RSS: ' . $exception->getMessage();
+            $syncMessage = 'Error: ' . $exception->getMessage();
         }
     }
-
-    $newsItems = searchNews($connection, $searchQuery, 50);
+    
+    $newsItems = searchNews($connection, $searchQuery, $sortBy, 50);
 }
 
 function escapeHtml(string $value): string
@@ -39,24 +55,18 @@ function shortenText(string $text, int $maxLength = 300): string
     if (function_exists('mb_strimwidth')) {
         return mb_strimwidth($text, 0, $maxLength, '...');
     }
-
-    if (strlen($text) <= $maxLength) {
-        return $text;
-    }
-
+    if (strlen($text) <= $maxLength) return $text;
     return substr($text, 0, $maxLength - 3) . '...';
 }
 ?>
 <!doctype html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Noticias</title>
     <link rel="stylesheet" href="templates/css/news.css" />
 </head>
-
 <body>
     <main class="page">
         <div class="topbar">
@@ -66,16 +76,23 @@ function shortenText(string $text, int $maxLength = 300): string
         <h1>Noticias</h1>
 
         <div class="search-box">
-            <form method="GET" action="">
-                <input
-                    type="text"
-                    name="q"
-                    value="<?php echo escapeHtml($searchQuery); ?>"
-                    placeholder="Buscar por título de noticia"
-                    aria-label="Buscar por título de noticia" />
+            <form method="POST" action="" style="margin-bottom: 15px; border-bottom: 1px solid #ddd; padding-bottom: 15px;">
+                <input type="url" name="new_feed" placeholder="Pegar URL de nuevo RSS (ej. https://site.com/feed)" required />
                 <div class="search-actions">
+                    <button type="submit">Agregar Fuente</button>
+                </div>
+            </form>
+
+            <form method="GET" action="">
+                <input type="text" name="q" value="<?php echo escapeHtml($searchQuery); ?>" placeholder="Buscar en noticias..." />
+                <div class="search-actions">
+                    <select name="sort" onchange="this.form.submit()" style="padding: 8px; border-radius: 8px; border: 1px solid #d1d5db;">
+                        <option value="published_at" <?php echo $sortBy == 'published_at' ? 'selected' : ''; ?>>Ordenar por: Fecha</option>
+                        <option value="title" <?php echo $sortBy == 'title' ? 'selected' : ''; ?>>Ordenar por: Título</option>
+                        <option value="category" <?php echo $sortBy == 'category' ? 'selected' : ''; ?>>Ordenar por: Categoría</option>
+                    </select>
                     <button type="submit">Buscar</button>
-                    <a href="?sync=1">Sincronizar RSS</a>
+                    <a href="?sync=1">Actualizar Todo</a>
                 </div>
             </form>
         </div>
@@ -86,34 +103,33 @@ function shortenText(string $text, int $maxLength = 300): string
             <p class="status status-ok"><?php echo escapeHtml($syncMessage); ?></p>
         <?php endif; ?>
 
-        <section class="news-list" aria-label="Listado de noticias encontradas">
+        <section class="news-list">
             <?php if (empty($newsItems)): ?>
                 <article class="news-card news-card-empty">
                     <div class="news-content full-width">
                         <h2>Sin resultados</h2>
-                        <p class="news-description">No se encontraron noticias con el criterio de búsqueda actual.</p>
+                        <p class="news-description">No se encontraron noticias.</p>
                     </div>
                 </article>
             <?php else: ?>
-                <?php foreach ($newsItems as $news): ?>
-                    <?php
+                <?php foreach ($newsItems as $news): 
                     $imageUrl = !empty($news['image_url']) ? $news['image_url'] : 'https://picsum.photos/300/300';
                     $publishedAt = !empty($news['published_at']) ? date('d/m/Y', strtotime((string) $news['published_at'])) : 'Sin fecha';
-                    $description = trim((string) ($news['description'] ?? ''));
-                    if ($description === '') {
-                        $description = 'Sin descripción disponible.';
-                    }
-                    ?>
+                    $cat = !empty($news['category']) ? $news['category'] : 'General';
+                ?>
                     <article class="news-card">
                         <img src="<?php echo escapeHtml($imageUrl); ?>" alt="Imagen de noticia" />
                         <div class="news-content">
                             <h2>
-                                <a href="<?php echo escapeHtml((string) $news['link']); ?>" target="_blank" rel="noopener noreferrer">
+                                <a href="<?php echo escapeHtml((string) $news['link']); ?>" target="_blank">
                                     <?php echo escapeHtml((string) $news['title']); ?>
                                 </a>
                             </h2>
-                            <p class="news-date">Publicado: <?php echo escapeHtml($publishedAt); ?></p>
-                            <p class="news-description"><?php echo escapeHtml(shortenText($description, 300)); ?></p>
+                            <p class="news-date">
+                                Publicado: <?php echo escapeHtml($publishedAt); ?> | 
+                                <b style="color: #2563eb;"><?php echo escapeHtml($cat); ?></b>
+                            </p>
+                            <p class="news-description"><?php echo escapeHtml(shortenText((string)$news['description'], 200)); ?></p>
                         </div>
                     </article>
                 <?php endforeach; ?>
@@ -121,5 +137,4 @@ function shortenText(string $text, int $maxLength = 300): string
         </section>
     </main>
 </body>
-
 </html>

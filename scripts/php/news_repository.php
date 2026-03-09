@@ -49,46 +49,43 @@ function getNewsCount(mysqli $connection): int
     return isset($row['total']) ? (int) $row['total'] : 0;
 }
 
-function searchNews(mysqli $connection, string $searchTerm = '', int $limit = 50): array
+function searchNews(mysqli $connection, string $searchTerm = '', string $orderBy = 'published_at', int $limit = 50): array
 {
-    $limit = max(1, min($limit, 100));
+    $allowedSort = ['published_at', 'title', 'category', 'author'];
+    if (!in_array($orderBy, $allowedSort)) { $orderBy = 'published_at'; }
 
+    $sql = "SELECT id, guid, title, link, author, category, description, image_url, published_at  FROM news";
+    
     if ($searchTerm !== '') {
-        $sql = "SELECT id, guid, title, link, author, description, image_url, published_at
-                FROM news
-                WHERE title LIKE CONCAT('%', ?, '%')
-                ORDER BY published_at DESC, id DESC
-                LIMIT ?";
-
-        $statement = $connection->prepare($sql);
-
-        if (!$statement) {
-            error_log('Error al preparar búsqueda de noticias: ' . $connection->error);
-            return [];
-        }
-
-        $statement->bind_param('si', $searchTerm, $limit);
-        $statement->execute();
-        $result = $statement->get_result();
-
-        return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+        $sql .= " WHERE title LIKE CONCAT('%', ?, '%') OR description LIKE CONCAT('%', ?, '%')";
     }
-
-    $sql = "SELECT id, guid, title, link, author, description, image_url, published_at
-            FROM news
-            ORDER BY published_at DESC, id DESC
-            LIMIT ?";
+    
+    if ($orderBy === 'published_at') {
+        $sql .= " ORDER BY published_at DESC, id DESC LIMIT ?";
+    } else {
+        $sql .= " ORDER BY $orderBy ASC, published_at DESC, id DESC LIMIT ?";
+    }
 
     $statement = $connection->prepare($sql);
-
-    if (!$statement) {
-        error_log('Error al preparar listado de noticias: ' . $connection->error);
-        return [];
+    
+    if ($searchTerm !== '') {
+        $statement->bind_param('ssi', $searchTerm, $searchTerm, $limit);
+    } else {
+        $statement->bind_param('i', $limit);
     }
 
-    $statement->bind_param('i', $limit);
     $statement->execute();
     $result = $statement->get_result();
-
     return $result ? $result->fetch_all(MYSQLI_ASSOC) : [];
+}
+
+function addFeed(mysqli $connection, string $url): bool {
+    $stmt = $connection->prepare("INSERT IGNORE INTO feeds (url) VALUES (?)");
+    $stmt->bind_param('s', $url);
+    return $stmt->execute();
+}
+
+function getAllFeeds(mysqli $connection): array {
+    $res = $connection->query("SELECT url FROM feeds");
+    return $res ? $res->fetch_all(MYSQLI_ASSOC) : [];
 }

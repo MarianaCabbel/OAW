@@ -29,15 +29,24 @@ if (!createNewsTableIfNotExists($connection)) {
 }
 
 try {
-    $result = syncNewsFromRss($connection, $rssUrl);
+    $resFeeds = $connection->query("SELECT url FROM feeds");
+    $totalInserted = 0;
+    $totalUpdated = 0;
+
+    while ($f = $resFeeds->fetch_assoc()) {
+        $result = syncNewsFromRss($connection, $f['url']);
+        $totalInserted += $result['inserted'];
+        $totalUpdated += $result['updated'];
+    }
 
     echo json_encode([
         'ok' => true,
-        'message' => 'Sincronización completada',
-        'inserted' => $result['inserted'],
-        'updated' => $result['updated'],
+        'message' => 'Sincronización masiva completada',
+        'inserted' => $totalInserted,
+        'updated' => $totalUpdated,
         'total' => getNewsCount($connection),
     ], JSON_UNESCAPED_UNICODE);
+
 } catch (Throwable $exception) {
     error_log('Error de sincronización RSS en sync_news.php: ' . $exception->getMessage());
     http_response_code(500);
