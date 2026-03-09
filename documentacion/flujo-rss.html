@@ -60,67 +60,49 @@
 <body>
     <main class="container">
         <h1>Lector RSS de Noticias</h1>
-        <p>Resumen del flujo de obtención, almacenamiento y visualización de noticias desde la fuente RSS de Xataka
-            México.</p>
+        <p>Resumen del flujo de obtención, almacenamiento y visualización centralizada de múltiples fuentes RSS.</p>
 
         <section class="card">
-            <h2>1) Flujo general</h2>
+            <h2>1&#41; Flujo general</h2>
             <ul>
-                <li>El usuario entra a la página principal de noticias y se carga la vista de listado.</li>
-                <li>La aplicación valida conexión a base de datos y asegura la estructura mínima de tablas usando el
-                    archivo <code>create.sql</code>.</li>
-                <li>Si no hay noticias o si se solicita sincronización manual, se descarga el RSS y se procesa cada
-                    item.</li>
-                <li>Las noticias se guardan en MySQL con estrategia de actualización por <code>guid</code> (insertar
-                    nuevas / actualizar existentes).</li>
-                <li>Finalmente se consultan los registros en base de datos y se renderizan en la UI con filtro por
-                    título.</li>
+                <li>El usuario gestiona sus fuentes personalizadas añadiendo URLs de RSS directamente desde la interfaz.</li>
+                <li>La aplicación valida la conexión a la base de datos y asegura que las tablas <code>news</code> y <code>feeds</code> estén listas.</li>
+                <li>Al solicitar la sincronización ("Actualizar Todo"), la aplicación recorre todos los feeds almacenados y procesa cada ítem.</li>
+                <li>Las noticias se guardan en MySQL utilizando un <code>INSERT ... ON DUPLICATE KEY UPDATE</code> para mantener los datos actualizados mediante el identificador único <code>guid</code>.</li>
+                <li>La interfaz permite al usuario buscar noticias por título/descripción y ordenarlas dinámicamente por fecha, título o categoría.</li>
             </ul>
         </section>
 
         <section class="card">
-            <h2>2) ¿Cómo funciona la actualización de noticias?</h2>
+            <h2>2&#41; Actualización de noticias</h2>
             <ul>
-                <li><strong>Fuente RSS:</strong> se consume <code>https://www.xataka.com.mx/feedburner.xml</code>.</li>
-                <li><strong>Descarga:</strong> primero se intenta por cURL; si no está disponible, se usa
-                    <code>file_get_contents</code>.</li>
-                <li><strong>Parseo:</strong> se interpreta XML, se extraen título, enlace, guid, fecha, autor, imagen y
-                    descripción.</li>
-                <li><strong>Normalización:</strong> se limpia HTML de la descripción y se corrige codificación UTF-8
-                    para evitar texto corrupto.</li>
-                <li><strong>Persistencia:</strong> se ejecuta un <code>INSERT ... ON DUPLICATE KEY UPDATE</code> para
-                    mantener noticias al día.</li>
-                <li><strong>Ejecución:</strong> la sincronización ocurre por primera carga (si no hay datos) o por
-                    acción manual en la UI (botón Sincronizar RSS).</li>
+                <li><strong>Gestión de Fuentes:</strong> Los usuarios pueden registrar múltiples URLs en la tabla <code>feeds</code>.</li>
+                <li><strong>Descarga:</strong> Se utiliza cURL con una configuración de timeout para obtener el contenido, respaldado por <code>file_get_contents</code>.</li>
+                <li><strong>Parseo Dinámico:</strong> Se interpreta el XML, extrayendo los metadatos habituales y capturando la <strong>categoría</strong> de cada noticia.</li>
+                <li><strong>Normalización:</strong> Se limpia el HTML de las descripciones y se normaliza el texto a UTF-8 para garantizar legibilidad.</li>
+                <li><strong>Persistencia:</strong> La estrategia de actualización asegura que, ante cambios en un artículo (ej. edición de título), la noticia en base de datos se mantenga vigente.</li>
             </ul>
         </section>
 
         <section class="card">
-            <h2>3) Arquitectura de la app (alto nivel)</h2>
+            <h2>3&#41; Arquitectura de la aplicación</h2>
             <ul>
-                <li><strong>Capa de presentación:</strong> plantilla HTML/CSS del listado de noticias y buscador.</li>
-                <li><strong>Capa de aplicación:</strong> scripts PHP para sincronizar RSS, consultar noticias y
-                    orquestar el flujo.</li>
-                <li><strong>Capa de datos:</strong> conexión MySQL y esquema SQL inicial.</li>
-                <li><strong>Punto de sincronización:</strong> endpoint dedicado para ejecutar actualización bajo
-                    demanda.</li>
-                <li><strong>Manejo de errores:</strong> errores y excepciones relevantes se registran en el log de PHP.
-                </li>
+                <li><strong>Capa de presentación:</strong> Interfaz con formularios para añadir feeds, buscador por texto y selectores de ordenamiento (Fecha, Categoría, Título).</li>
+                <li><strong>Capa de aplicación:</strong> Lógica centralizada para orquestar la sincronización de múltiples fuentes y consultas optimizadas a base de datos.</li>
+                <li><strong>Capa de datos:</strong> Base de datos MySQL con tablas relacionales separadas para <code>feeds</code> y <code>news</code>.</li>
+                <li><strong>Seguridad:</strong> Uso estricto de <em>prepared statements</em> en todas las consultas para prevenir inyecciones SQL.</li>
             </ul>
         </section>
 
         <section class="card">
-            <h2>4) Componentes principales</h2>
+            <h2>4&#41; Componentes principales</h2>
             <ul>
-                <li><code>database/create.sql</code>: define estructura inicial de base de datos.</li>
-                <li><code>database/connection.php</code>: conexión MySQL con charset utf8mb4.</li>
-                <li><code>scripts/php/rss_sync.php</code>: lógica de descarga y parseo RSS.</li>
-                <li><code>scripts/php/news_repository.php</code>: operaciones de tabla y consultas de noticias.</li>
-                <li><code>scripts/php/sync_news.php</code>: endpoint para sincronización manual.</li>
-                <li><code>templates/html/news-list.php</code>: render del listado y búsqueda.</li>
+                <li><code>database/create.sql</code>: Esquema de tablas con soporte para categorías y gestión de feeds.</li>
+                <li><code>rss_sync.php</code>: Lógica robusta de descarga y parseo de múltiples orígenes.</li>
+                <li><code>news_repository.php</code>: Operaciones CRUD, incluyendo la nueva lógica de búsqueda y ordenamiento dinámico.</li>
+                <li><code>news-list.php</code>: Vista principal que orquestra la UI, el registro de nuevos feeds y el filtrado en tiempo real.</li>
             </ul>
         </section>
     </main>
 </body>
-
-</html>
+</html>  

@@ -108,16 +108,17 @@ function syncNewsFromRss(mysqli $connection, string $rssUrl): array
     $items = $xml->channel->item ?? [];
 
     $statement = $connection->prepare(
-        "INSERT INTO news (guid, title, link, author, description, image_url, published_at, source)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE
-            title = VALUES(title),
-            link = VALUES(link),
-            author = VALUES(author),
-            description = VALUES(description),
-            image_url = VALUES(image_url),
-            published_at = VALUES(published_at),
-            source = VALUES(source)"
+    "INSERT INTO news (guid, title, link, author, category, description, image_url, published_at, source)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+        title = VALUES(title),
+        link = VALUES(link),
+        author = VALUES(author),
+        category = VALUES(category),
+        description = VALUES(description),
+        image_url = VALUES(image_url),
+        published_at = VALUES(published_at),
+        source = VALUES(source)"
     );
 
     if (!$statement) {
@@ -137,6 +138,8 @@ function syncNewsFromRss(mysqli $connection, string $rssUrl): array
         $link = trim((string) ($item->link ?? ''));
         $guid = md5($link);
         $rawDescription = trim((string) ($item->description ?? ''));
+        $category = trim((string) ($item->category ?? 'General')); 
+
         [$imageUrl, $plainDescription] = extractImageAndText($rawDescription);
         $publishedAt = parseRssDateToMysql((string) ($item->pubDate ?? ''));
         $source = 'xataka';
@@ -146,14 +149,15 @@ function syncNewsFromRss(mysqli $connection, string $rssUrl): array
         }
 
         $statement->bind_param(
-            'ssssssss',
-            $guid,
-            $title,
-            $link,
-            $dcCreator,
-            $plainDescription,
-            $imageUrl,
-            $publishedAt,
+            'sssssssss', 
+            $guid, 
+            $title, 
+            $link, 
+            $dcCreator, 
+            $category, 
+            $plainDescription, 
+            $imageUrl, 
+            $publishedAt, 
             $source
         );
 
