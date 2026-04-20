@@ -134,7 +134,7 @@ function loadNewsPageState(
         $connection,
         $state['searchQuery'],
         $state['sortBy'],
-        50,
+        20,
         $state['sourceFilter'],
         $state['categoryFilter']
     );

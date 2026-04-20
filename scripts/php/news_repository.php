@@ -53,7 +53,7 @@ function searchNews(
     mysqli $connection,
     string $searchTerm = '',
     string $orderBy = 'published_at',
-    int $limit = 50,
+    int $limit = 20,
     string $sourceFilter = 'all',
     string $categoryFilter = 'all'
 ): array
