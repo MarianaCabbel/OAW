@@ -1,57 +1,21 @@
-(function () {
-    var openButton = document.getElementById('openSettings');
-    var closeButton = document.getElementById('closeSettings');
-    var modal = document.getElementById('settingsModal');
-    var openFilters = document.getElementById('openFilters');
-    var closeFilters = document.getElementById('closeFilters');
-    var filtersModal = document.getElementById('filtersModal');
+(function(){
+  function revealContent(){
+    document.body && document.body.classList.remove('preload-news');
+  }
+  document.readyState==='loading'
+    ? document.addEventListener('DOMContentLoaded',revealContent)
+    : revealContent();
+  
+  function bindModal(openId,closeId,modalId){
+    var open=document.getElementById(openId);
+    var close=document.getElementById(closeId);
+    var modal=document.getElementById(modalId);
+    if(!open||!close||!modal) return;
+    open.addEventListener('click',function(){modal.classList.add('is-open');});
+    close.addEventListener('click',function(){modal.classList.remove('is-open');});
+    modal.addEventListener('click',function(e){e.target===modal&&modal.classList.remove('is-open');});
+  }
 
-    function revealContent() {
-        if (document.body) {
-            document.body.classList.remove('preload-news');
-        }
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', revealContent);
-    } else {
-        revealContent();
-    }
-
-    if (!openButton || !closeButton || !modal) {
-        return;
-    }
-
-    function openModal() {
-        modal.classList.add('is-open');
-    }
-
-    function closeModal() {
-        modal.classList.remove('is-open');
-    }
-
-    openButton.addEventListener('click', openModal);
-    closeButton.addEventListener('click', closeModal);
-
-    modal.addEventListener('click', function (event) {
-        if (event.target === modal) {
-            closeModal();
-        }
-    });
-
-    if (openFilters && closeFilters && filtersModal) {
-        openFilters.addEventListener('click', function () {
-            filtersModal.classList.add('is-open');
-        });
-
-        closeFilters.addEventListener('click', function () {
-            filtersModal.classList.remove('is-open');
-        });
-
-        filtersModal.addEventListener('click', function (event) {
-            if (event.target === filtersModal) {
-                filtersModal.classList.remove('is-open');
-            }
-        });
-    }
+  bindModal('openSettings','closeSettings','settingsModal');
+  bindModal('openFilters','closeFilters','filtersModal');
 })();

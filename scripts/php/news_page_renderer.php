@@ -7,11 +7,9 @@ function renderStatusHtml(bool $dbConnected, string $dbError, string $syncMessag
     if (!$dbConnected) {
         return '<p class="status status-error">Conexion a BD fallida: ' . escapeHtml($dbError) . '</p>';
     }
-
     if ($syncMessage !== '') {
         return '<p class="status status-ok">' . escapeHtml($syncMessage) . '</p>';
     }
-
     return '';
 }
 
@@ -20,7 +18,6 @@ function renderPanelMessageHtml(string $panelMessage, string $panelMessageType):
     if ($panelMessage === '') {
         return '';
     }
-
     $statusClass = $panelMessageType === 'error' ? 'status-error' : 'status-ok';
     return '<p class="status ' . $statusClass . '">' . escapeHtml($panelMessage) . '</p>';
 }
@@ -32,20 +29,24 @@ function renderNewsCardsHtml(array $newsItems): string
     }
 
     $html = '';
+    
+    $fallbackImg = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'640\' height=\'360\' viewBox=\'0 0 640 360\'%3E%3Crect width=\'640\' height=\'360\' fill=\'%231e293b\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' dominant-baseline=\'middle\' text-anchor=\'middle\' fill=\'%2364748b\' font-family=\'system-ui\' font-size=\'14\'%3ESin imagen%3C/text%3E%3C/svg%3E';
 
-    foreach ($newsItems as $news) {
-        $imageUrl = !empty($news['image_url']) ? (string) $news['image_url'] : 'https://static.vecteezy.com/system/resources/previews/022/059/000/non_2x/no-image-available-icon-vector.jpg';
+    foreach ($newsItems as $i => $news) {
+        $imageUrl = !empty($news['image_url']) ? (string) $news['image_url'] : $fallbackImg;
         $publishedAt = formatDateSpanish((string) ($news['published_at'] ?? ''));
         $description = trim((string) ($news['description'] ?? ''));
-
         if ($description === '') {
             $description = 'Sin descripcion disponible.';
         }
 
+        $loadingAttr = $i === 0 ? 'eager' : 'lazy';
+
         $html .= '<article class="news-card">';
-        $html .= '<img src="' . escapeHtml($imageUrl) . '" alt="Imagen de noticia" />';
+        
+        $html .= '<img src="' . escapeHtml($imageUrl) . '" alt="" width="640" height="360" loading="' . $loadingAttr . '" decoding="async"/>';
         $html .= '<div class="news-content">';
-        $html .= '<h2><a href="' . escapeHtml((string) $news['link']) . '" target="_blank">' . escapeHtml((string) $news['title']) . '</a></h2>';
+        $html .= '<h2><a href="' . escapeHtml((string) $news['link']) . '" target="_blank" rel="noopener noreferrer">' . escapeHtml((string) $news['title']) . '</a></h2>';
         $html .= '<p class="news-date">Publicado: ' . escapeHtml($publishedAt) . ' | <b class="news-category">' . escapeHtml((string) ($news['category'] ?? 'General')) . '</b></p>';
         $html .= '<p class="news-description">' . escapeHtml(shortenText($description, 200)) . '</p>';
         $html .= '</div>';
@@ -58,39 +59,34 @@ function renderNewsCardsHtml(array $newsItems): string
 function renderOptionsHtml(array $items, string $selectedValue, string $allLabel = 'Todas'): string
 {
     $html = '<option value="all"' . ($selectedValue === 'all' ? ' selected' : '') . '>' . escapeHtml($allLabel) . '</option>';
-
     foreach ($items as $item) {
         $value = (string) $item;
         $selected = $selectedValue === $value ? ' selected' : '';
         $html .= '<option value="' . escapeHtml($value) . '"' . $selected . '>' . escapeHtml($value) . '</option>';
     }
-
     return $html;
 }
 
 function renderFeedItemsHtml(array $feeds): string
 {
     $html = '';
-
     foreach ($feeds as $feed) {
         $feedId = (int) $feed['id'];
         $feedUrl = escapeHtml((string) $feed['url']);
-
         $html .= '<div class="feed-item">';
         $html .= '<form method="POST" class="feed-edit-form">';
-        $html .= '<input type="hidden" name="feed_action" value="update" />';
-        $html .= '<input type="hidden" name="feed_id" value="' . $feedId . '" />';
-        $html .= '<input type="url" name="edit_feed_url" value="' . $feedUrl . '" required />';
+        $html .= '<input type="hidden" name="feed_action" value="update"/>';
+        $html .= '<input type="hidden" name="feed_id" value="' . $feedId . '"/>';
+        $html .= '<input type="url" name="edit_feed_url" value="' . $feedUrl . '" required/>';
         $html .= '<button type="submit">Guardar</button>';
         $html .= '</form>';
         $html .= '<form method="POST" class="feed-delete-form" onsubmit="return confirm(\'Eliminar esta fuente RSS?\');">';
-        $html .= '<input type="hidden" name="feed_action" value="delete" />';
-        $html .= '<input type="hidden" name="feed_id" value="' . $feedId . '" />';
+        $html .= '<input type="hidden" name="feed_action" value="delete"/>';
+        $html .= '<input type="hidden" name="feed_id" value="' . $feedId . '"/>';
         $html .= '<button type="submit" class="danger">Eliminar</button>';
         $html .= '</form>';
         $html .= '</div>';
     }
-
     return $html;
 }
 
@@ -98,7 +94,6 @@ function renderNewsListPageTemplate(array $state, string $refreshUrl): string
 {
     $templatePath = __DIR__ . '/../../templates/html/news-list.html';
     $template = file_get_contents($templatePath);
-
     if ($template === false) {
         return '<p>No se pudo cargar la plantilla de noticias.</p>';
     }
