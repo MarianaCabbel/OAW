@@ -33,8 +33,12 @@ function renderNewsCardsHtml(array $newsItems): string
 
     $html = '';
 
-    foreach ($newsItems as $news) {
+    foreach ($newsItems as $index => $news) {
         $imageUrl = !empty($news['image_url']) ? (string) $news['image_url'] : 'https://static.vecteezy.com/system/resources/previews/022/059/000/non_2x/no-image-available-icon-vector.jpg';
+        $primaryImageSrc = buildImageProxyUrl($imageUrl, 640);
+        $imageSrcset = buildImageSrcset($imageUrl);
+        $imageLoading = $index === 0 ? 'eager' : 'lazy';
+        $imageFetchPriority = $index === 0 ? 'high' : 'low';
         $publishedAt = formatDateSpanish((string) ($news['published_at'] ?? ''));
         $description = trim((string) ($news['description'] ?? ''));
 
@@ -43,7 +47,16 @@ function renderNewsCardsHtml(array $newsItems): string
         }
 
         $html .= '<article class="news-card">';
-        $html .= '<img src="' . escapeHtml($imageUrl) . '" alt="Imagen de noticia" />';
+        $html .= '<div class="news-image-wrap is-loading">';
+        $html .= '<span class="news-image-skeleton" aria-hidden="true"></span>';
+        $html .= '<img class="news-image" src="' . escapeHtml($primaryImageSrc !== '' ? $primaryImageSrc : $imageUrl) . '"';
+
+        if ($imageSrcset !== '') {
+            $html .= ' srcset="' . escapeHtml($imageSrcset) . '" sizes="(max-width: 700px) 100vw, 180px"';
+        }
+
+        $html .= ' width="640" height="360" loading="' . $imageLoading . '" decoding="async" fetchpriority="' . $imageFetchPriority . '" alt="Imagen de noticia" />';
+        $html .= '</div>';
         $html .= '<div class="news-content">';
         $html .= '<h2><a href="' . escapeHtml((string) $news['link']) . '" target="_blank">' . escapeHtml((string) $news['title']) . '</a></h2>';
         $html .= '<p class="news-date">Publicado: ' . escapeHtml($publishedAt) . ' | <b class="news-category">' . escapeHtml((string) ($news['category'] ?? 'General')) . '</b></p>';

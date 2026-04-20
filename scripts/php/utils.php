@@ -51,3 +51,38 @@ function formatDateSpanish(?string $dateValue): string
 
     return $day . '/' . $month . '/' . $year;
 }
+
+function buildImageProxyUrl(string $imageUrl, int $width = 640): string
+{
+    $trimmedUrl = trim($imageUrl);
+
+    if ($trimmedUrl === '') {
+        return '';
+    }
+
+    $width = max(160, min($width, 1200));
+    return 'scripts/php/news_image.php?src=' . rawurlencode($trimmedUrl) . '&w=' . $width;
+}
+
+function buildImageSrcset(string $imageUrl, array $widths = [320, 480, 640]): string
+{
+    $trimmedUrl = trim($imageUrl);
+
+    if ($trimmedUrl === '') {
+        return '';
+    }
+
+    $candidates = [];
+
+    foreach ($widths as $width) {
+        $normalizedWidth = (int) $width;
+
+        if ($normalizedWidth < 160 || $normalizedWidth > 1200) {
+            continue;
+        }
+
+        $candidates[] = buildImageProxyUrl($trimmedUrl, $normalizedWidth) . ' ' . $normalizedWidth . 'w';
+    }
+
+    return implode(', ', $candidates);
+}
