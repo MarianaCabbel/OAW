@@ -6,10 +6,37 @@
     var closeFilters = document.getElementById('closeFilters');
     var filtersModal = document.getElementById('filtersModal');
 
+    function initImageSkeletons() {
+        var imageWraps = document.querySelectorAll('.news-image-wrap');
+
+        imageWraps.forEach(function (wrapper) {
+            var image = wrapper.querySelector('img');
+
+            if (!image) {
+                wrapper.classList.remove('is-loading');
+                return;
+            }
+
+            function revealImage() {
+                wrapper.classList.remove('is-loading');
+            }
+
+            if (image.complete) {
+                revealImage();
+                return;
+            }
+
+            image.addEventListener('load', revealImage, { once: true });
+            image.addEventListener('error', revealImage, { once: true });
+        });
+    }
+
     function revealContent() {
         if (document.body) {
             document.body.classList.remove('preload-news');
         }
+
+        initImageSkeletons();
     }
 
     if (document.readyState === 'loading') {
